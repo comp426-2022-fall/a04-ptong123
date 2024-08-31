@@ -1,0 +1,179 @@
+name: Autograding Tests
+'on':
+- workflow_dispatch
+- repository_dispatch
+permissions:
+  checks: write
+  actions: read
+  contents: read
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Root endpoint
+      id: root-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Root endpoint
+        setup-command: npm install
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; (timeout --signal=SIGINT 5 node
+          server.js --port=$PORT; exit 0) & sleep 1s && curl -s http://localhost:${PORT}/app/
+          && sleep 5s
+        input: ''
+        expected-output: 200 OK
+        comparison-method: contains
+        timeout: 10
+        max-score: 5000
+    - name: Nonexistent endpoint
+      id: nonexistent-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Nonexistent endpoint
+        setup-command: ''
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; (timeout --signal=SIGINT 5 node
+          server.js --port=$PORT; exit 0) & sleep 1s && curl -s http://localhost:${PORT}/app/nope/
+          && sleep 5s
+        input: ''
+        expected-output: 404 NOT FOUND
+        comparison-method: contains
+        timeout: 10
+        max-score: 5000
+    - name: Main file defined in package.json
+      id: main-file-defined-in-package-json
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Main file defined in package.json
+        setup-command: ''
+        command: cat package.json
+        input: ''
+        expected-output: '"main": "server.js"'
+        comparison-method: contains
+        timeout: 10
+        max-score: 5000
+    - name: Test script
+      id: test-script
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Test script
+        setup-command: npm install
+        command: "(timeout --signal=SIGINT 5 npm test; exit 0) & sleep 1s && curl
+          -s http://localhost:5555/app/ && sleep 5s"
+        input: ''
+        expected-output: 200 OK
+        comparison-method: contains
+        timeout: 10
+        max-score: 5000
+    - name: Roll random dice
+      id: roll-random-dice
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Roll random dice
+        setup-command: npm install
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; SIDES="$(shuf -i 4-20 -n 1)";
+          DICE="$(shuf -i 1-4 -n 1)"; ROLLS="$(shuf -i 1-3 -n 1)"; (timeout --signal=SIGINT
+          5 node server.js --port=${PORT}; exit 0) & sleep 1s && curl -s -d "sides=${SIDES}&dice=${DICE}&rolls=${ROLLS}"
+          http://localhost:${PORT}/app/roll/ && sleep 5s
+        input: ''
+        expected-output: '{"sides":([4-9]|1[0-9]|20),"dice":([1-4]),"rolls":([1-3]),"results":\[(([1-9]|[1-7][0-9]|80),?){0,2}(([1-9]|[1-7][0-9]|80)\])}'
+        comparison-method: regex
+        timeout: 10
+        max-score: 5000
+    - name: Default roll endpoint
+      id: default-roll-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: Default roll endpoint
+        setup-command: npm install
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; (timeout --signal=SIGINT 5 node
+          server.js --port="$PORT"; exit 0) & sleep 1s && curl -s http://localhost:"$PORT"/app/roll/
+          && sleep 5s
+        input: ''
+        expected-output: '{"sides":6,"dice":2,"rolls":1,"results":\[([2-9]|1[0-2])\]}'
+        comparison-method: regex
+        timeout: 10
+        max-score: 5000
+    - name: sides dice rolls parameters endpoint
+      id: sides-dice-rolls-parameters-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: sides dice rolls parameters endpoint
+        setup-command: npm install
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; SIDES="$(shuf -i 4-20 -n 1)";
+          DICE="$(shuf -i 1-4 -n 1)"; ROLLS="$(shuf -i 1-3 -n 1)"; (timeout --signal=SIGINT
+          5 node server.js --port=${PORT}; exit 0) & sleep 1s && curl -s http://localhost:${PORT}/app/roll/${SIDES}/${DICE}/${ROLLS}/
+          && sleep 5s
+        input: ''
+        expected-output: '{"sides":([4-9]|1[0-9]|20),"dice":([1-4]),"rolls":([1-3]),"results":\[(([1-9]|[1-7][0-9]|80),?){0,2}(([1-9]|[1-7][0-9]|80)\])}'
+        comparison-method: regex
+        timeout: 10
+        max-score: 5000
+    - name: sides dice endpoint
+      id: sides-dice-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: sides dice endpoint
+        setup-command: ''
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; SIDES="$(shuf -i 4-20 -n 1)";
+          DICE="$(shuf -i 1-4 -n 1)"; (timeout --signal=SIGINT 5 node server.js --port=${PORT};
+          exit 0) & sleep 1s && curl -s http://localhost:${PORT}/app/roll/${SIDES}/${DICE}/
+          && sleep 5s
+        input: ''
+        expected-output: '{"sides":([4-9]|1[0-9]|20),"dice":([1-4]),"rolls":1,"results":\[([1-9]|[1-7][0-9]|80)\]}'
+        comparison-method: regex
+        timeout: 10
+        max-score: 5000
+    - name: sides endpoint
+      id: sides-endpoint
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: sides endpoint
+        setup-command: ''
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; SIDES="$(shuf -i 4-20 -n 1)";
+          (timeout --signal=SIGINT 5 node server.js --port=${PORT}; exit 0) & sleep
+          1s && curl -s http://localhost:${PORT}/app/roll/${SIDES}/ && sleep 5s
+        input: ''
+        expected-output: '{"sides":([4-9]|1[0-9]|20),"dice":2,"rolls":1,"results":\[([1-9]|[1-3][0-9]|40)\]}'
+        comparison-method: regex
+        timeout: 10
+        max-score: 5000
+    - name: headers
+      id: headers
+      uses: classroom-resources/autograding-io-grader@v1
+      with:
+        test-name: headers
+        setup-command: ''
+        command: PORT="$(shuf -i 2000-65535 -n 1)"; (timeout --signal=SIGINT 5 node
+          server.js --port=$PORT; exit 0) & sleep 1s && curl -I -s http://localhost:${PORT}/app/
+          && sleep 5s
+        input: ''
+        expected-output: HTTP
+        comparison-method: contains
+        timeout: 10
+        max-score: 5000
+    - name: Node version
+      id: node-version
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Node version
+        setup-command: ''
+        command: node -v
+        timeout: 10
+    - name: Autograding Reporter
+      uses: classroom-resources/autograding-grading-reporter@v1
+      env:
+        ROOT-ENDPOINT_RESULTS: "${{steps.root-endpoint.outputs.result}}"
+        NONEXISTENT-ENDPOINT_RESULTS: "${{steps.nonexistent-endpoint.outputs.result}}"
+        MAIN-FILE-DEFINED-IN-PACKAGE-JSON_RESULTS: "${{steps.main-file-defined-in-package-json.outputs.result}}"
+        TEST-SCRIPT_RESULTS: "${{steps.test-script.outputs.result}}"
+        ROLL-RANDOM-DICE_RESULTS: "${{steps.roll-random-dice.outputs.result}}"
+        DEFAULT-ROLL-ENDPOINT_RESULTS: "${{steps.default-roll-endpoint.outputs.result}}"
+        SIDES-DICE-ROLLS-PARAMETERS-ENDPOINT_RESULTS: "${{steps.sides-dice-rolls-parameters-endpoint.outputs.result}}"
+        SIDES-DICE-ENDPOINT_RESULTS: "${{steps.sides-dice-endpoint.outputs.result}}"
+        SIDES-ENDPOINT_RESULTS: "${{steps.sides-endpoint.outputs.result}}"
+        HEADERS_RESULTS: "${{steps.headers.outputs.result}}"
+        NODE-VERSION_RESULTS: "${{steps.node-version.outputs.result}}"
+      with:
+        runners: root-endpoint,nonexistent-endpoint,main-file-defined-in-package-json,test-script,roll-random-dice,default-roll-endpoint,sides-dice-rolls-parameters-endpoint,sides-dice-endpoint,sides-endpoint,headers,node-version
